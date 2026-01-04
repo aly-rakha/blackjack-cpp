@@ -1,0 +1,15 @@
+# Compiled files
+blackjack
+*.o
+*.exe
+*.out
+
+# Save files
+blackjack_save.txt
+
+# Mac files
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
