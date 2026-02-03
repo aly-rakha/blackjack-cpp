@@ -26,7 +26,7 @@ private:
     
     // Helper functions
     int calculateHandValue(const std::vector<Card>& hand) const;
-    void displayHand(const std::vector<Card>& hand, bool hideFirst = false) const;
+    void displayHand(const std::vector<Card>& hand, bool hideFirst = false, bool showValue = true) const;
     void dealInitialCards();
     void playerTurn();
     void dealerTurn();

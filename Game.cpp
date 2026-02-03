@@ -13,7 +13,6 @@ Game::Game() {
 }
 
 void Game::clearScreen() {
-    // Cross-platform clear screen
     #ifdef _WIN32
         system("cls");
     #else
@@ -41,9 +40,7 @@ void Game::saveData() {
 void Game::loadData() {
     ifstream file("blackjack_save.txt");
     if (file.is_open()) {
-        // Try to read all values
         if (file >> playerChips >> gamesPlayed >> gamesWon >> gamesLost >> biggestWin >> longestStreak) {
-            // Successfully read all 6 values
             file.close();
             currentStreak = 0;
             cout << "=====================================" << endl;
@@ -52,9 +49,7 @@ void Game::loadData() {
             cout << "Your progress has been loaded." << endl;
             pause(1000);
         } else {
-            // Old save file format (only had chips)
             file.close();
-            // playerChips was already read, just initialize the rest
             gamesPlayed = 0;
             gamesWon = 0;
             gamesLost = 0;
@@ -67,10 +62,9 @@ void Game::loadData() {
             cout << "Old save file detected. Statistics reset." << endl;
             cout << "Chips: " << playerChips << endl;
             pause(1000);
-            saveData();  // Update to new format
+            saveData();
         }
     } else {
-        // No save file, brand new game
         playerChips = 1000;
         gamesPlayed = 0;
         gamesWon = 0;
@@ -105,15 +99,12 @@ void Game::displayStatistics() {
 
 void Game::updateStatistics(bool won, int profit) {
     gamesPlayed++;
-    
     if (won) {
         gamesWon++;
         currentStreak++;
-        
         if (currentStreak > longestStreak) {
             longestStreak = currentStreak;
         }
-        
         if (profit > biggestWin) {
             biggestWin = profit;
         }
@@ -126,41 +117,53 @@ void Game::updateStatistics(bool won, int profit) {
 int Game::calculateHandValue(const vector<Card>& hand) const {
     int value = 0;
     int aces = 0;
-    
     for (const Card& card : hand) {
         value += card.getValue();
         if (card.getRank() == "A") {
             aces++;
         }
     }
-    
     while (value > 21 && aces > 0) {
         value -= 10;
         aces--;
     }
-    
     return value;
 }
 
-void Game::displayHand(const vector<Card>& hand, bool hideFirst) const {
+void Game::displayHand(const vector<Card>& hand, bool hideFirst, bool showValue) const {
+    vector<vector<string>> allCards;
     for (size_t i = 0; i < hand.size(); i++) {
         if (hideFirst && i == 0) {
-            cout << "[Hidden] ";
+            vector<string> hiddenCard = {
+                " ┌─────┐",
+                " │░░░░░│",
+                " │░░░░░│",
+                " │░░░░░│",
+                " └─────┘"
+            };
+            allCards.push_back(hiddenCard);
         } else {
-            hand[i].display();
-            if (i < hand.size() - 1) {
-                cout << ", ";
+            allCards.push_back(hand[i].getCardArt());
+        }
+    }
+    for (int line = 0; line < 5; line++) {
+        for (size_t card = 0; card < allCards.size(); card++) {
+            cout << allCards[card][line];
+            if (card < allCards.size() - 1) {
+                cout << " ";
             }
         }
+        cout << endl;
+    }
+    if (showValue) {
+        cout << "Value: " << calculateHandValue(hand) << endl;
     }
 }
 
 bool Game::offerInsurance() {
-    // Check if dealer's visible card is an Ace
     if (dealerHand[1].getRank() != "A") {
         return false;
     }
-    
     cout << "\n=====================================" << endl;
     cout << "Dealer shows an Ace!" << endl;
     cout << "Would you like insurance?" << endl;
@@ -168,25 +171,19 @@ bool Game::offerInsurance() {
     cout << "Pays 2:1 if dealer has blackjack." << endl;
     cout << "=====================================" << endl;
     cout << "Buy insurance? (Y/N): ";
-    
     char choice;
     cin >> choice;
-    
     if (choice == 'Y' || choice == 'y') {
         int insuranceCost = currentBet / 2;
-        
         if (insuranceCost > playerChips) {
             cout << "Not enough chips for insurance!" << endl;
             return false;
         }
-        
         playerChips -= insuranceCost;
-        
-        // Check if dealer has blackjack
         if (calculateHandValue(dealerHand) == 21) {
             cout << "\nDealer has blackjack!" << endl;
             cout << "Insurance pays out: " << insuranceCost * 2 << " chips!" << endl;
-            playerChips += insuranceCost * 3; // Return insurance + 2:1 payout
+            playerChips += insuranceCost * 3;
             pause(1500);
             return true;
         } else {
@@ -195,74 +192,54 @@ bool Game::offerInsurance() {
             pause(1500);
         }
     }
-    
     return false;
 }
 
 bool Game::offerDoubleDown() {
-    // Only offer if player has exactly 2 cards
     if (playerHand.size() != 2) {
         return false;
     }
-    
-    // Check if player has enough chips
     if (currentBet > playerChips) {
         return false;
     }
-    
     cout << "\n=====================================" << endl;
-    cout << "Your hand: ";
+    cout << "Your hand:\n";
     displayHand(playerHand);
-    cout << " (Value: " << calculateHandValue(playerHand) << ")" << endl;
-    
-    cout << "\nDealer's hand: ";
-    displayHand(dealerHand, true);
-    cout << endl;
+    cout << "\nDealer's hand:\n";
+    displayHand(dealerHand, true, false);
     cout << "=====================================" << endl;
-    
     cout << "\n(D)ouble Down, (H)it, or (S)tand? ";
-    
     char choice;
     cin >> choice;
-    
     if (choice == 'D' || choice == 'd') {
         playerChips -= currentBet;
         currentBet *= 2;
-        
         cout << "\nYou doubled down! Bet is now " << currentBet << " chips." << endl;
         pause(800);
-        
         playerHand.push_back(deck.dealCard());
-        cout << "You drew: ";
-        playerHand.back().display();
-        cout << endl;
-        
-        cout << "Your final hand: ";
+        cout << "\nYou drew:\n";
+        vector<Card> newCard = {playerHand.back()};
+        displayHand(newCard);
+        cout << "\nYour final hand:\n";
         displayHand(playerHand);
-        cout << " (Value: " << calculateHandValue(playerHand) << ")" << endl;
         pause(1500);
-        
         return true;
     } else if (choice == 'H' || choice == 'h') {
-        // Player chose to hit
         playerHand.push_back(deck.dealCard());
-        cout << "\nYou drew: ";
-        playerHand.back().display();
-        cout << endl;
+        cout << "\nYou drew:\n";
+        vector<Card> newCard = {playerHand.back()};
+        displayHand(newCard);
         pause(800);
-        return false;  // Continue playing normally
+        return false;
     } else if (choice == 'S' || choice == 's') {
-        // Player chose to stand - signal to end turn
-        return true;  // Return true to indicate turn is over
+        return true;
     }
-    
     return false;
 }
 
 void Game::dealInitialCards() {
     playerHand.clear();
     dealerHand.clear();
-    
     cout << "\nDealing cards";
     pause(300);
     cout << ".";
@@ -270,58 +247,44 @@ void Game::dealInitialCards() {
     cout << ".";
     pause(300);
     cout << "." << endl;
-    
     playerHand.push_back(deck.dealCard());
     dealerHand.push_back(deck.dealCard());
     playerHand.push_back(deck.dealCard());
     dealerHand.push_back(deck.dealCard());
-    
     pause(500);
 }
 
 void Game::playerTurn() {
-    // Check for double down first (only on first turn with 2 cards)
     if (playerHand.size() == 2) {
         bool turnOver = offerDoubleDown();
-        
         if (turnOver) {
-            // Either doubled down or chose to stand
             if (calculateHandValue(playerHand) > 21) {
                 cout << "\nBust! You went over 21." << endl;
                 pause(1000);
             }
             return;
         }
-        // If we get here, player chose to hit, so continue with the loop
     }
-    
-    // Regular hit/stand loop
     while (true) {
         cout << "\n=====================================" << endl;
-        cout << "Your hand: ";
+        cout << "Your hand:\n";
         displayHand(playerHand);
-        cout << " (Value: " << calculateHandValue(playerHand) << ")" << endl;
-        
-        cout << "\nDealer's hand: ";
-        displayHand(dealerHand, true);
-        cout << endl;
+        cout << "\nDealer's hand:\n";
+        displayHand(dealerHand, true, false);
         cout << "=====================================" << endl;
-        
         if (calculateHandValue(playerHand) > 21) {
             cout << "\nBust! You went over 21." << endl;
             pause(1000);
             return;
         }
-        
         cout << "\n(H)it or (S)tand? ";
         char choice;
         cin >> choice;
-        
         if (choice == 'H' || choice == 'h') {
             playerHand.push_back(deck.dealCard());
-            cout << "\nYou drew: ";
-            playerHand.back().display();
-            cout << endl;
+            cout << "\nYou drew:\n";
+            vector<Card> newCard = {playerHand.back()};
+            displayHand(newCard);
             pause(800);
         } else if (choice == 'S' || choice == 's') {
             return;
@@ -336,28 +299,21 @@ void Game::dealerTurn() {
     cout << "        DEALER'S TURN" << endl;
     cout << "=====================================" << endl;
     pause(1000);
-    
-    cout << "Dealer reveals: ";
+    cout << "Dealer reveals:\n";
     displayHand(dealerHand);
-    cout << " (Value: " << calculateHandValue(dealerHand) << ")" << endl;
     pause(1500);
-    
     while (calculateHandValue(dealerHand) < 17) {
         cout << "\nDealer hits..." << endl;
         pause(1000);
-        
         dealerHand.push_back(deck.dealCard());
-        cout << "Dealer drew: ";
-        dealerHand.back().display();
-        cout << endl;
+        cout << "Dealer drew:\n";
+        vector<Card> newCard = {dealerHand.back()};
+        displayHand(newCard);
         pause(800);
-        
-        cout << "Dealer's hand: ";
+        cout << "\nDealer's hand:\n";
         displayHand(dealerHand);
-        cout << " (Value: " << calculateHandValue(dealerHand) << ")" << endl;
         pause(1500);
     }
-    
     if (calculateHandValue(dealerHand) > 21) {
         cout << "\nDealer busts!" << endl;
     } else {
@@ -369,19 +325,15 @@ void Game::dealerTurn() {
 void Game::determineWinner() {
     int playerValue = calculateHandValue(playerHand);
     int dealerValue = calculateHandValue(dealerHand);
-    
     cout << "\n=====================================" << endl;
     cout << "           RESULTS" << endl;
     cout << "=====================================" << endl;
     cout << "Your hand value: " << playerValue << endl;
     cout << "Dealer's hand value: " << dealerValue << endl;
     cout << "=====================================" << endl;
-    
     pause(1000);
-    
     int profit = 0;
     bool won = false;
-    
     if (playerValue > 21) {
         cout << "\nYou busted! Dealer wins." << endl;
         cout << "Lost: " << currentBet << " chips" << endl;
@@ -407,58 +359,41 @@ void Game::determineWinner() {
         playerChips += currentBet;
         cout << "Your bet has been returned." << endl;
     }
-    
     updateStatistics(won, profit);
-    
     cout << "\n=====================================" << endl;
     cout << "Total chips: " << playerChips << endl;
     cout << "=====================================" << endl;
-    
     pause(1500);
     saveData();
 }
 
 void Game::play() {
     clearScreen();
-    
     cout << "\n=====================================" << endl;
     cout << "          BLACKJACK" << endl;
     cout << "=====================================" << endl;
     cout << "Chips: " << playerChips << endl;
     cout << "Minimum bet: $" << MINIMUM_BET << endl;
     cout << "=====================================" << endl;
-    
-    // Place bet
     cout << "\nEnter your bet: $";
     while (!(cin >> currentBet) || currentBet < MINIMUM_BET || currentBet > playerChips) {
         cin.clear();
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
         cout << "Invalid bet. Enter between $" << MINIMUM_BET << " and $" << playerChips << ": $";
     }
-    
     playerChips -= currentBet;
-    
-    // Deal cards
     dealInitialCards();
-    
-    cout << "\nYour hand: ";
+    cout << "\nYour hand:\n";
     displayHand(playerHand);
-    cout << " (Value: " << calculateHandValue(playerHand) << ")" << endl;
-    
-    cout << "Dealer shows: ";
-    dealerHand[1].display();
-    cout << endl;
+    cout << "\nDealer shows:\n";
+    vector<Card> dealerVisible = {dealerHand[1]};
+    displayHand(dealerVisible);
     pause(1000);
-    
-    // Check for insurance
     bool insurancePaid = offerInsurance();
     if (insurancePaid && calculateHandValue(dealerHand) == 21) {
-        // Dealer had blackjack and insurance paid out
         saveData();
         return;
     }
-    
-    // Check for player blackjack
     if (calculateHandValue(playerHand) == 21) {
         cout << "\n=====================================" << endl;
         cout << "       BLACKJACK!" << endl;
@@ -473,16 +408,10 @@ void Game::play() {
         saveData();
         return;
     }
-    
-    // Player's turn
     playerTurn();
-    
-    // Dealer's turn (only if player didn't bust)
     if (calculateHandValue(playerHand) <= 21) {
         dealerTurn();
     }
-    
-    // Determine winner
     determineWinner();
 }
 
@@ -496,11 +425,9 @@ bool Game::playAgain() {
         displayStatistics();
         return false;
     }
-    
     cout << "\n(P)lay again, (S)tatistics, or (Q)uit? ";
     char choice;
     cin >> choice;
-    
     if (choice == 'S' || choice == 's') {
         displayStatistics();
         cout << "\nPress any key to continue...";
@@ -508,6 +435,5 @@ bool Game::playAgain() {
         cin.get();
         return playAgain();
     }
-    
     return (choice == 'P' || choice == 'p');
 }

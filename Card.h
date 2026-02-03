@@ -2,24 +2,21 @@
 #define CARD_H
 
 #include <string>
+#include <vector>
 
 class Card {
-private:
-    std::string suit;   // Hearts, Diamonds, Clubs, Spades
-    std::string rank;   // A, 2-10, J, Q, K
-    int value;          // Numeric value for blackjack
+	private:
+		std::string suit;
+		std::string rank;
+		int value;
 
-public:
-    // Constructor
-    Card(std::string s, std::string r, int v);
-    
-    // Getters
-    std::string getSuit() const;
-    std::string getRank() const;
-    int getValue() const;
-    
-    // Display card
-    void display() const;
+	public:
+		Card(std::string s, std::string r, int v);
+		std::string getSuit() const;
+		std::string getRank() const;
+		int getValue() const;
+		void display() const;
+		std::vector<std::string> getCardArt() const;
 };
 
 #endif
